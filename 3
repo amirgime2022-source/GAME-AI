@@ -1,0 +1,101 @@
+import React, { useState, useEffect } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { base44 } from '@/api/base44Client';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Upload, Loader2, X } from 'lucide-react';
+import { PRESET_CATEGORIES } from '@/utils/categoryColors';
+
+export default function ContentForm({ initialData, onSubmit, onCancel, saving }) {
+  const [form, setForm] = useState({
+    title: '', summary: '', content: '', category: 'ماینکرفت', image_url: '', author_name: ''
+  });
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        title: initialData.title || '', summary: initialData.summary || '',
+        content: initialData.content || '', category: initialData.category || 'ماینکرفت',
+        image_url: initialData.image_url || '', author_name: initialData.author_name || ''
+      });
+    }
+  }, [initialData]);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      setForm(prev => ({ ...prev, image_url: res.file_url }));
+    } catch {
+      alert('خطا در آپلود تصویر. لطفاً دوباره تلاش کنید.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = () => setForm(prev => ({ ...prev, image_url: '' }));
+  const handleSubmit = (e) => { e.preventDefault(); onSubmit(form); };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="title">عنوان مطلب *</Label>
+        <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="عنوان مطلب را وارد کنید" required />
+      </div>
+      <div className="grid sm:grid-cols-2 gap-5">
+        <div className="space-y-2">
+          <Label>دسته‌بندی</Label>
+          <Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="نام دسته‌بندی را وارد کنید" list="category-suggestions" />
+          <datalist id="category-suggestions">
+            {PRESET_CATEGORIES.map(c => <option key={c} value={c} />)}
+          </datalist>
+          <p className="text-xs text-muted-foreground">می‌توانید از پیشنهادات استفاده کنید یا دسته‌بندی جدیدی بنویسید</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="author">نویسنده</Label>
+          <Input id="author" value={form.author_name} onChange={e => setForm({ ...form, author_name: e.target.value })} placeholder="نام نویسنده" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="summary">خلاصه</Label>
+        <Input id="summary" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه کوتاه مطلب" />
+      </div>
+      <div className="space-y-2">
+        <Label>تصویر مطلب</Label>
+        {form.image_url ? (
+          <div className="relative rounded-lg overflow-hidden border border-border/50">
+            <img src={form.image_url} alt="پیش‌نمایش" className="w-full h-48 object-cover" />
+            <button type="button" onClick={removeImage} className="absolute top-2 left-2 p-1.5 rounded-lg bg-destructive/90 text-destructive-foreground hover:bg-destructive transition">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition bg-muted/30">
+            {uploading ? (
+              <><Loader2 className="w-6 h-6 text-primary animate-spin" /><span className="text-sm text-muted-foreground">در حال آپلود...</span></>
+            ) : (
+              <><div className="flex gap-2 items-center text-primary"><Upload className="w-5 h-5" /><span className="text-sm font-medium">آپلود تصویر</span></div><span className="text-xs text-muted-foreground">برای انتخاب فایل کلیک کنید</span></>
+            )}
+            <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+          </label>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label>محتوای کامل *</Label>
+        <ReactQuill theme="snow" value={form.content} onChange={val => setForm({ ...form, content: val })} />
+      </div>
+      <div className="flex gap-3 pt-2">
+        <Button type="submit" disabled={saving || uploading} className="bg-primary text-primary-foreground hover:opacity-90 flex-1">
+          {saving ? 'در حال ذخیره...' : (initialData ? 'به‌روزرسانی مطلب' : 'انتشار مطلب')}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>انصراف</Button>
+      </div>
+    </form>
+  );
+}
