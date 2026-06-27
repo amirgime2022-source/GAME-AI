@@ -1,0 +1,50 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
+import { ArrowRight, User } from 'lucide-react';
+
+import { getCategoryColor } from '@/utils/categoryColors';
+
+export default function ContentDetail() {
+  const { id } = useParams();
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    base44.entities.GameContent.get(id)
+      .then(setItem).catch(() => setItem(null)).finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return <div className="max-w-3xl mx-auto px-4 py-20"><div className="h-96 rounded-xl bg-card animate-pulse" /></div>;
+  }
+  if (!item) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <p className="text-muted-foreground mb-4">مطلب مورد نظر یافت نشد.</p>
+        <Link to="/" className="text-primary hover:underline">بازگشت به خانه</Link>
+      </div>
+    );
+  }
+  const catColor = getCategoryColor(item.category);
+
+  return (
+    <article className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition"><ArrowRight className="w-4 h-4" /> بازگشت به خانه</Link>
+      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${catColor}`}>{item.category || 'سایر'}</span>
+      <h1 className="font-heading text-3xl md:text-4xl font-bold mb-4 leading-tight">{item.title}</h1>
+      {item.author_name && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
+          <User className="w-4 h-4" /> {item.author_name}
+        </div>
+      )}
+      {item.image_url && (
+        <div className="aspect-video rounded-xl overflow-hidden mb-8 border border-border/50">
+          <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+        </div>
+      )}
+      {item.summary && <p className="text-lg text-muted-foreground mb-6 leading-relaxed border-r-2 border-primary/30 pr-4">{item.summary}</p>}
+      <div dangerouslySetInnerHTML={{ __html: item.content }} className="text-foreground leading-relaxed [&_p]:mb-4 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-3 [&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pr-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pr-6 [&_ol]:mb-4" />
+    </article>
+  );
+}
